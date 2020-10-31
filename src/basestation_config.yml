@@ -1,0 +1,6 @@
+source_id:
+root_name: telemetry
+environment: sandbox
+version: v1
+element: Habitat
+base_station_id: 

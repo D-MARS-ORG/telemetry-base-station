@@ -1,0 +1,4 @@
+# MQTT Default is 0.0.0.0:1883
+address: localhost
+port: 9999
+topic: D-MARS/telemetry
