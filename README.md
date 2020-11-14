@@ -11,7 +11,6 @@ Nodes (MQTT Publishers) MUST follow this structure as the message being sent:
    "node_id":<unique UUID>,
    "data_type":<data type string>,
    "measurement_unit":<unit in string>,
-   "timestamp":<epoch>,
    "value":<float>
 }
 ```
@@ -23,7 +22,6 @@ Example:
    "node_id":"9ab93a61-bfad-442a-b551-5a155545bb60",
    "data_type":"Temperature",
    "measurement_unit":"Celsius",
-   "timestamp":1604156438.187722,
    "value":25.33
 }
 ```
