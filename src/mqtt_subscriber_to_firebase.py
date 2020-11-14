@@ -1,6 +1,8 @@
+import datetime
 import json
 import paho.mqtt.client as mqtt
 import pyrebase
+import time
 import yaml
 
 # read configurations
@@ -22,6 +24,8 @@ pyrebase_config = {
   "serviceAccount": firebase_config['service_account']
 }
 
+node_ids_recognized = set()
+
 # Firebase: initialize app with config
 firebase = pyrebase.initialize_app(pyrebase_config)
 
@@ -41,37 +45,54 @@ def handle_token_refresh():
   if token_refresh_counter % 50 == 0:
     user = auth.refresh(user['refreshToken'])
 
-def send_to_firebase(message):
+def send_metadata_to_firebase(message):
+  root_name = basestation_config['root_name']
+  environment = basestation_config['environment']
+  version = basestation_config['version']
+  node_id = message['node_id']
+  metadata = 'metadata'
+
+  metadata_message  = {
+    "base-station-id": basestation_config['base_station_id'],
+    "source-id": basestation_config['source_id'],
+    "element": basestation_config['element'],
+    "location": message['location']
+  }
+
+  db.child(root_name) \
+    .child(environment) \
+    .child(version) \
+    .child(metadata) \
+    .child(node_id) \
+    .set(metadata_message, user['idToken'])
+  
+
+def send_data_to_firebase(message):
   print("Sending event to Firebase...", flush=True)
+
+  if message['node_id'] not in node_ids_recognized:
+    send_metadata_to_firebase(message)
+    node_ids_recognized.add(message['node_id'])
 
   # Create using push
   # We are going to use this option as each send must have a unique ID.
   root_name = basestation_config['root_name']
   environment = basestation_config['environment']
   version = basestation_config['version']
-  source_id = basestation_config['source_id']
-  element = basestation_config['element']
-  location = message['location']
-  base_station_id = basestation_config['base_station_id']
-  node_id = message['node_id']
-  data_type = message['data_type']
-  measurement_unit = message['measurement_unit']
+  data = 'data'
 
   telemetry  = {
-    "timestamp": message['timestamp'],
+    "node-id": message['node_id'],
+    "data-type": message['data_type'],
+    "measurement-unit": message['measurement_unit'],
+    "timestamp": datetime.datetime.now().timestamp(),
     "value": message['value']
   }
 
   db.child(root_name) \
     .child(environment) \
     .child(version) \
-    .child(source_id) \
-    .child(element) \
-    .child(location) \
-    .child(base_station_id) \
-    .child(node_id) \
-    .child(data_type) \
-    .child(measurement_unit) \
+    .child(data) \
     .push(telemetry, user['idToken'])
 
   handle_token_refresh()
@@ -81,13 +102,14 @@ client.connect(mqtt_config['address'],mqtt_config['port'])
 
 def on_connect(client, userdata, flags, rc):
     print("Connected to a broker!", flush=True)
+    print(f"Subscribing to topic: {mqtt_config['topic']}", flush=True)
     client.subscribe(mqtt_config['topic'])
 
 def on_message(client, userdata, message):
     decoded_message = message.payload.decode()
     print(decoded_message, flush=True)
 
-    send_to_firebase(json.loads(decoded_message))
+    send_data_to_firebase(json.loads(decoded_message))
 
 while True:
     client.on_connect = on_connect

@@ -1,7 +1,7 @@
 import logging
-import anyio
+import asyncio
 import os
-from distmqtt.broker import create_broker
+from hbmqtt.broker import Broker
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -19,19 +19,24 @@ config = {
         }
     },
     'sys-interval': 10,
+    'auth': {
+            'allow-anonymous': True
+    },
+    'plugins': ['auth_anonymous'],
     'topic-check': {
-        'enabled': False
+        'enabled': True,
+        'plugins': ['topic_taboo'],
     }
 }
 
-async def broker_coroutine():
-    async with create_broker(
-        config=config
-    ) as broker:
-        while True:
-            await anyio.sleep(99999)
+broker = Broker(config)
+
+@asyncio.coroutine
+def startBroker():
+    yield from broker.start()
 
 if __name__ == '__main__':
     formatter = "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s"
-    logging.basicConfig(level=logging.INFO,format=formatter)
-    anyio.run(broker_coroutine)
+    logging.basicConfig(level=logging.INFO, format=formatter)
+    asyncio.get_event_loop().run_until_complete(startBroker())
+    asyncio.get_event_loop().run_forever()

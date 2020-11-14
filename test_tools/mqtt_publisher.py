@@ -1,5 +1,4 @@
 # publisher simulator
-import datetime
 import json
 import paho.mqtt.client as mqtt
 import requests
@@ -43,7 +42,6 @@ def send_temperature_sample():
         "node_id": "9ab93a61-bfad-442a-b551-5a155545bb60",
         "data_type": "Temperature",
         "measurement_unit": "Celsius",
-        "timestamp": datetime.datetime.now().timestamp(),
         "value": collect_temperature()
     }
     client.publish(mqtt_config['topic'], json.dumps(message))
