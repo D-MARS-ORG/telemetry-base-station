@@ -42,7 +42,7 @@ def handle_token_refresh():
   global token_refresh_counter
   global user
   token_refresh_counter += 1
-  if token_refresh_counter % 50 == 0:
+  if token_refresh_counter % 30 == 0:
     user = auth.refresh(user['refreshToken'])
 
 def send_metadata_to_firebase(message):
