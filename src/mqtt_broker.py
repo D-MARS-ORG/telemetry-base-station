@@ -1,10 +1,23 @@
-import logging
 import asyncio
+import logging
+import logging.handlers
 import os
 from hbmqtt.broker import Broker
 import yaml
 
-logger = logging.getLogger(__name__)
+# logging configuration
+LOG_FILENAME = 'mqtt_broker.log'
+
+root_logger=logging.getLogger()
+root_logger.setLevel(logging.DEBUG)
+file_handler = logging.FileHandler(LOG_FILENAME, 'w', 'utf-8')
+file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s:%(message)s'))
+# Create the rotating file handler. Limit the size to 1000000Bytes ~ 1MB .
+rotating_file_handler = logging.handlers.RotatingFileHandler(
+              LOG_FILENAME, maxBytes=1000000, backupCount=5)
+# Add the handlers to the logger
+root_logger.addHandler(file_handler)
+root_logger.addHandler(rotating_file_handler)
 
 with open(r'mqtt_config.yml') as file:
     mqtt_config = yaml.load(file, Loader=yaml.FullLoader)
@@ -36,7 +49,5 @@ def startBroker():
     yield from broker.start()
 
 if __name__ == '__main__':
-    formatter = "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s"
-    logging.basicConfig(level=logging.INFO, format=formatter)
     asyncio.get_event_loop().run_until_complete(startBroker())
     asyncio.get_event_loop().run_forever()

@@ -1,12 +1,31 @@
 import datetime
 import json
+import logging
+import logging.handlers
 import paho.mqtt.client as mqtt
 import pyrebase
 import time
+import threading
 import yaml
 
-# read configurations
+# logging configuration
+LOG_FILENAME = 'mqtt_subscriber_to_firebase.log'
 
+root_logger=logging.getLogger()
+root_logger.setLevel(logging.DEBUG)
+file_handler = logging.FileHandler(LOG_FILENAME, 'w', 'utf-8')
+file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s:%(message)s'))
+# Create the rotating file handler. Limit the size to 1000000Bytes ~ 1MB .
+rotating_file_handler = logging.handlers.RotatingFileHandler(
+              LOG_FILENAME, maxBytes=1000000, backupCount=5)
+# Add the handlers to the logger
+root_logger.addHandler(file_handler)
+root_logger.addHandler(rotating_file_handler)
+
+
+
+
+# read configurations
 with open(r'firebase_config.yml') as file:
     firebase_config = yaml.load(file, Loader=yaml.FullLoader)
 
@@ -36,14 +55,11 @@ user = auth.sign_in_with_email_and_password(firebase_config['email'], firebase_c
 db = firebase.database()
 
 # need to refresh the firebase token every hour
-token_refresh_counter = 0
-
-def handle_token_refresh():
-  global token_refresh_counter
+def handle_firebase_token_refresh():
   global user
-  token_refresh_counter += 1
-  if token_refresh_counter % 30 == 0:
-    user = auth.refresh(user['refreshToken'])
+  user = auth.refresh(user['refreshToken'])
+  # 1800 seconds = 30 minutes
+  threading.Timer(1800, handle_firebase_token_refresh).start()
 
 def send_metadata_to_firebase(message):
   root_name = basestation_config['root_name']
@@ -68,7 +84,7 @@ def send_metadata_to_firebase(message):
   
 
 def send_data_to_firebase(message):
-  print("Sending event to Firebase...", flush=True)
+  logging.debug('Sending event to Firebase...')
 
   if message['node_id'] not in node_ids_recognized:
     send_metadata_to_firebase(message)
@@ -95,19 +111,20 @@ def send_data_to_firebase(message):
     .child(data) \
     .push(telemetry, user['idToken'])
 
-  handle_token_refresh()
 
 client = mqtt.Client()
 client.connect(mqtt_config['address'],mqtt_config['port'])
 
+handle_firebase_token_refresh()
+
 def on_connect(client, userdata, flags, rc):
-    print("Connected to a broker!", flush=True)
-    print(f"Subscribing to topic: {mqtt_config['topic']}", flush=True)
+    logging.debug('Connected to a broker!')
+    logging.debug('Subscribing to topic: %s', mqtt_config['topic'])
     client.subscribe(mqtt_config['topic'])
 
 def on_message(client, userdata, message):
     decoded_message = message.payload.decode()
-    print(decoded_message, flush=True)
+    logging.debug('%s', decoded_message)
 
     send_data_to_firebase(json.loads(decoded_message))
 
