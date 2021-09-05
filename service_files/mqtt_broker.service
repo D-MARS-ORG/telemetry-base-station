@@ -1,0 +1,11 @@
+[Unit]
+Description=DMARS MQTT Broker service
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/python3.6 /opt/dmars/mqtt_broker.py
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

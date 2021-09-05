@@ -1,0 +1,11 @@
+[Unit]
+Description=DMARS MQTT subscriber to Firebase service
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/python3.6 /opt/dmars/mqtt_subscriber_to_firebase.py
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
