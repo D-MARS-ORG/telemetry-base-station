@@ -9,7 +9,7 @@ import threading
 import yaml
 
 # logging configuration
-LOG_FILENAME = 'mqtt_subscriber_to_firebase.log'
+LOG_FILENAME = '/opt/dmars/mqtt_subscriber_to_firebase.log'
 
 root_logger=logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
@@ -22,17 +22,14 @@ rotating_file_handler = logging.handlers.RotatingFileHandler(
 root_logger.addHandler(file_handler)
 root_logger.addHandler(rotating_file_handler)
 
-
-
-
 # read configurations
-with open(r'firebase_config.yml') as file:
+with open(r'/opt/dmars/firebase_config.yml') as file:
     firebase_config = yaml.load(file, Loader=yaml.FullLoader)
 
-with open(r'basestation_config.yml') as file:
+with open(r'/opt/dmars/basestation_config.yml') as file:
     basestation_config = yaml.load(file, Loader=yaml.FullLoader)
 
-with open(r'mqtt_config.yml') as file:
+with open(r'/opt/dmars/mqtt_config.yml') as file:
     mqtt_config = yaml.load(file, Loader=yaml.FullLoader)
 
 pyrebase_config = {
@@ -54,12 +51,17 @@ user = auth.sign_in_with_email_and_password(firebase_config['email'], firebase_c
 
 db = firebase.database()
 
-# need to refresh the firebase token every hour
 def handle_firebase_token_refresh():
   global user
+  logging.debug('Refreshing Firebase token...')
   user = auth.refresh(user['refreshToken'])
+
+# need to refresh the firebase token every hour
+def handle_firebase_token_refresh_thread():
+  logging.debug('handling scheduled firebase token refresh')
+  handle_firebase_token_refresh()
   # 1800 seconds = 30 minutes
-  threading.Timer(1800, handle_firebase_token_refresh).start()
+  threading.Timer(1800, handle_firebase_token_refresh_thread).start()
 
 def send_metadata_to_firebase(message):
   root_name = basestation_config['root_name']
@@ -75,13 +77,14 @@ def send_metadata_to_firebase(message):
     "location": message['location']
   }
 
+
   db.child(root_name) \
     .child(environment) \
     .child(version) \
     .child(metadata) \
     .child(node_id) \
     .set(metadata_message, user['idToken'])
-  
+
 
 def send_data_to_firebase(message):
   logging.debug('Sending event to Firebase...')
@@ -111,11 +114,10 @@ def send_data_to_firebase(message):
     .child(data) \
     .push(telemetry, user['idToken'])
 
-
 client = mqtt.Client()
 client.connect(mqtt_config['address'],mqtt_config['port'])
 
-handle_firebase_token_refresh()
+handle_firebase_token_refresh_thread()
 
 def on_connect(client, userdata, flags, rc):
     logging.debug('Connected to a broker!')

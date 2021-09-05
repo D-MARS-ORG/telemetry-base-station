@@ -6,7 +6,7 @@ from hbmqtt.broker import Broker
 import yaml
 
 # logging configuration
-LOG_FILENAME = 'mqtt_broker.log'
+LOG_FILENAME = '/opt/dmars/mqtt_broker.log'
 
 root_logger=logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
@@ -19,7 +19,7 @@ rotating_file_handler = logging.handlers.RotatingFileHandler(
 root_logger.addHandler(file_handler)
 root_logger.addHandler(rotating_file_handler)
 
-with open(r'mqtt_config.yml') as file:
+with open(r'/opt/dmars/mqtt_config.yml') as file:
     mqtt_config = yaml.load(file, Loader=yaml.FullLoader)
 
 bind_config = f"{mqtt_config['address']}:{mqtt_config['port']}"
